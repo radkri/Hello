@@ -14,7 +14,7 @@ from pathlib import Path
 
 def get_all_values_Security(nested_dictionary,sec_dic):
     
-    try:
+    #try:
         global  security_count,sec_dic_list,sec_dic_list_temp
              
         for key, value in nested_dictionary.items():
@@ -25,73 +25,69 @@ def get_all_values_Security(nested_dictionary,sec_dic):
                 return(attr,val,security_count)
             #print(sec_dic)
            
-            if   type(value) is dict and   key=='customBucket':
-    
+            if   type(value) is dict:
+                if key=='customBucket':
                                     
-                                    attr.append(value['customDimensionName'])
-                                    val.append(value['customBucketValue'])
-                                    sec_dic[value['customDimensionName']]=value['customBucketValue']
-    
-                                    continue
-            if type(value) is list  and key=='strike'  :
-                       #print('0000000000')   
-                       for i in range(len(value)):
-                           #print(value[i]['strikeDate'])
-                           #print(value[i]['strikePrice'])
-                           sec_dic[value[i]['strikeDate']]=value[i]['strikePrice']
-             
-           
-            
-            if type (value) is dict and key=='equityName': #synthetic index
-                attr.append(key)
-                val.append(value['#text'])
-                sec_dic[key]=value['#text']
-                continue
-            
-            if type(value) is dict and (key=='issueDate' or key=='maturityDate' or key=='notionalDate') : # certificate of deposit
-               sec_dic[key]=value['explicitDate']
-            
-            if type(value) is dict and (key=='couponFrequency' or key=='dayCountBasis' or key=='couponType' or key=='pricingExpression'):
-                sec_dic[key]=list(value.keys())[0]  # dic keys to list and 1st item.
-                continue
-                
+                        attr.append(value['customDimensionName'])
+                        val.append(value['customBucketValue'])
+                        print(value['customDimensionName'])
+                        print('1111111111111')
+                        print(value['customBucketValue'])
+                        sec_dic[value['customDimensionName']]=value['customBucketValue']
 
-                
-            elif type(value) is list  and key=='security':
-                
-                
-                security_count=len(value)
-                
-                for i in range(len(value)):
-                                 
-                    listdata=value[i]
-                    sec_dic_list_temp.append(listdata)
-                    #print(sec_dic)
-                    #print('111111111')
-                    sec_dic_list.append(get_all_values_Security(listdata,{})[3])
-                    #print(sec_dic_list)
+                        continue
+#                elif   key=='equityName': #synthetic index
+#                        attr.append(key)
+#                        val.append(value['#text'])
+#                        sec_dic[key]=value['#text']
+#                        continue  
+#                    
+#                    
+#                elif   (key=='issueDate' or key=='maturityDate' or key=='notionalDate') : # certificate of deposit
+#                        sec_dic[key]=value['explicitDate']  
+#                        
+#                elif (key=='couponFrequency' or key=='dayCountBasis' or key=='couponType' or key=='pricingExpression'):
+#                        sec_dic[key]=list(value.keys())[0]  # dic keys to list and 1st item.
+#                        continue   
+                elif key=='security': 
+                        #print('1111111111') 
+                        sec_dic_list.append(get_all_values_Security(value,{})[3])  
+                        
+                else:
+                    
+                        sec_dic=get_all_values_Security(value,sec_dic)[3]
+                    
+                        
+            if type(value) is list  :
             
-            elif type(value) is dict  and key=='security': 
-                  print('1111111111') 
-                  sec_dic_list.append(get_all_values_Security(listdata,{})[3])
+                       if key=='strike'  :
+ 
+                               for i in range(len(value)):
+                                       sec_dic[value[i]['strikeDate']]=value[i]['strikePrice']
+             
+                       elif  key=='security':
                 
+                               security_count=len(value)
                 
+                               for i in range(len(value)):
+                                                 
+                                    listdata=value[i]
+                                    sec_dic_list_temp.append(listdata)
+                                    sec_dic_list.append(get_all_values_Security(listdata,{})[3])
+
+            
             else:
-                
-                
-              
-                
                            attr.extend([key])
                            val.extend([value])
                            if key=='explicitDate': # certificate of deposit 
                                continue
                            sec_dic[key]=value
                            #sec_dic_list.append(sec_dic)
-    except:
-               print("Issue in parsing security details")
+    #except:
+               #print("Issue in parsing security details")
                #print(key,value)
         
-    return(attr,val,security_count,sec_dic,sec_dic_list)
+            return(attr,val,security_count,sec_dic,sec_dic_list)
     
     
 def get_all_values_securitynew(nested_dictionary,prntkey, secnew_dic):
