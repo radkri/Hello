@@ -1,0 +1,367 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jun 10 12:20:01 2021
+
+@author: rkannapiran
+"""
+
+import xmltodict
+from collections import OrderedDict
+import os
+import json
+import pandas as pd
+from pathlib import Path
+
+def get_all_values_Security(nested_dictionary,sec_dic):
+    
+    try:
+        global  security_count,sec_dic_list,sec_dic_list_temp
+             
+        for key, value in nested_dictionary.items():
+            
+            
+            
+            if key=='holdingGroupList':
+                return(attr,val,security_count)
+            #print(sec_dic)
+           
+            if   type(value) is dict and   key=='customBucket':
+    
+                                    
+                                    attr.append(value['customDimensionName'])
+                                    val.append(value['customBucketValue'])
+                                    sec_dic[value['customDimensionName']]=value['customBucketValue']
+    
+                                    continue
+            if type(value) is list  and key=='strike'  :
+                       #print('0000000000')   
+                       for i in range(len(value)):
+                           #print(value[i]['strikeDate'])
+                           #print(value[i]['strikePrice'])
+                           sec_dic[value[i]['strikeDate']]=value[i]['strikePrice']
+             
+           
+            
+            if type (value) is dict and key=='equityName': #synthetic index
+                attr.append(key)
+                val.append(value['#text'])
+                sec_dic[key]=value['#text']
+                continue
+            
+            if type(value) is dict and (key=='issueDate' or key=='maturityDate' or key=='notionalDate') : # certificate of deposit
+               sec_dic[key]=value['explicitDate']
+            
+            if type(value) is dict and (key=='couponFrequency' or key=='dayCountBasis' or key=='couponType' or key=='pricingExpression'):
+                sec_dic[key]=list(value.keys())[0]  # dic keys to list and 1st item.
+                continue
+                
+
+                
+            elif type(value) is list  and key=='security':
+                
+                
+                security_count=len(value)
+                
+                for i in range(len(value)):
+                                 
+                    listdata=value[i]
+                    sec_dic_list_temp.append(listdata)
+                    #print(sec_dic)
+                    #print('111111111')
+                    sec_dic_list.append(get_all_values_Security(listdata,{})[3])
+                    #print(sec_dic_list)
+            
+            elif type(value) is dict  and key=='security': 
+                  print('1111111111') 
+                  sec_dic_list.append(get_all_values_Security(listdata,{})[3])
+                
+                
+            else:
+                
+                
+              
+                
+                           attr.extend([key])
+                           val.extend([value])
+                           if key=='explicitDate': # certificate of deposit 
+                               continue
+                           sec_dic[key]=value
+                           #sec_dic_list.append(sec_dic)
+    except:
+               print("Issue in parsing security details")
+               #print(key,value)
+        
+    return(attr,val,security_count,sec_dic,sec_dic_list)
+    
+    
+def get_all_values_securitynew(nested_dictionary,prntkey, secnew_dic):
+    
+    try:    
+        global  holding_count,hldng_nm,hldng_dic_list
+             
+        for key, value in nested_dictionary.items():
+            
+           
+         
+                        #return(attr,val,holding_count)
+                        
+                        if (type(value) is dict) :
+                             if (key == 'securityList' or ( key=='customBucketList' and prntkey=='holdingGroup') ) :
+                                 continue
+                             else:
+                                 hldng_dic=get_all_values_holding(value,key,hldng_dic)[4]
+                            
+                            
+                        elif type(value) is list and 'customBucket' not in key:
+                            
+                            #print(key)
+                            if key=='holding':
+                            #print(key)
+                                 holding_count=len(value)
+                                 
+                                 for i in range(len(value)):
+                                    #print(key,'---split---',value[i])            
+                                    listdata=value[i]
+                                    
+                                    
+                                    hldng_dic_list.append(get_all_values_holding(listdata, key,{})[4])
+                                    
+                            
+                                
+                            #print(holding_count)
+                            else:
+                                
+                                for i in range(len(value)):
+                                                    
+                                    listdata=value[i]
+                                    if key=='securityId':  #for certificate of deposit
+                                        
+                                        hldng_dic[value[1]]=value[0] #for certificate of deposit
+                                        
+                                        #print(hldng_dic) #for certificate of deposit securityid  
+                                        #print(listdata)
+                                    else:
+                                        hldng_dic = get_all_values_holding(listdata, key,hldng_dic)[4]
+                                    
+                        else:
+                            
+                            if key=='holdingGroupName':
+                                   #print(value)
+                                   hldng_nm=value
+                                   #print(hldng_dic)
+                            elif key=='customBucket':
+                                  for i in range (len(value)):
+                                      hldngattr.append(value[i]['customDimensionName'])
+                                    
+                                      temp_val=''
+                                     
+                                      if type(value[i]['customBucketValue']) is dict:
+                                          temp_val=value[i]['customBucketValue']['#text']
+                                                       
+                                      else:
+                                          temp_val=value[i]['customBucketValue']
+                                          
+                                      hldngval.append(temp_val)
+                                      hldng_dic[value[i]['customDimensionName']]=temp_val
+                                      
+                            elif '@type' in value:
+                                   hldngattr.extend([key])
+                                   hldngval.append(value['#text'])
+                                   #hldng_dic.update([key]=[value['#text']])                      
+                            else:
+
+                                   hldngattr.extend([key])
+                                   hldngval.extend([value])
+
+                                   
+                                   hldng_dic[key]=value
+                                   
+                               
+    except:                
+            print('Issue in parsing holding details')
+            print(key,value)
+         
+    return(hldng_nm,hldngattr,hldngval,holding_count,hldng_dic,hldng_dic_list)    
+
+    
+def get_all_values_holding(nested_dictionary,prntkey, hldng_dic):
+    
+    try:    
+        global  holding_count,hldng_nm,hldng_dic_list
+             
+        for key, value in nested_dictionary.items():
+            
+           
+         
+                        #return(attr,val,holding_count)
+                        
+                        if (type(value) is dict) :
+                             if (key == 'securityList' or ( key=='customBucketList' and prntkey=='holdingGroup') ) :
+                                 continue
+                             else:
+                                 hldng_dic=get_all_values_holding(value,key,hldng_dic)[4]
+                            
+                            
+                        elif type(value) is list and 'customBucket' not in key:
+                            
+                            #print(key)
+                            if key=='holding':
+                            #print(key)
+                                 holding_count=len(value)
+                                 
+                                 for i in range(len(value)):
+                                    #print(key,'---split---',value[i])            
+                                    listdata=value[i]
+                                    
+                                    
+                                    hldng_dic_list.append(get_all_values_holding(listdata, key,{})[4])
+                                    
+                            
+                                
+                            #print(holding_count)
+                            else:
+                                
+                                for i in range(len(value)):
+                                                    
+                                    listdata=value[i]
+                                    if key=='securityId':  #for certificate of deposit
+                                        
+                                        hldng_dic[value[1]]=value[0] #for certificate of deposit
+                                        
+                                        #print(hldng_dic) #for certificate of deposit securityid  
+                                        #print(listdata)
+                                    else:
+                                        hldng_dic = get_all_values_holding(listdata, key,hldng_dic)[4]
+                                    
+                        else:
+                            
+                            if key=='holdingGroupName':
+                                   #print(value)
+                                   hldng_nm=value
+                                   #print(hldng_dic)
+                            elif key=='customBucket':
+                                  for i in range (len(value)):
+                                      hldngattr.append(value[i]['customDimensionName'])
+                                    
+                                      temp_val=''
+                                     
+                                      if type(value[i]['customBucketValue']) is dict:
+                                          temp_val=value[i]['customBucketValue']['#text']
+                                                       
+                                      else:
+                                          temp_val=value[i]['customBucketValue']
+                                          
+                                      hldngval.append(temp_val)
+                                      hldng_dic[value[i]['customDimensionName']]=temp_val
+                                      
+                            elif '@type' in value:
+                                   hldngattr.extend([key])
+                                   hldngval.append(value['#text'])
+                                   #hldng_dic.update([key]=[value['#text']])                      
+                            else:
+
+                                   hldngattr.extend([key])
+                                   hldngval.extend([value])
+
+                                   
+                                   hldng_dic[key]=value
+                                   
+                               
+    except:                
+            print('Issue in parsing holding details')
+            print(key,value)
+         
+    return(hldng_nm,hldngattr,hldngval,holding_count,hldng_dic,hldng_dic_list)
+
+    
+    
+def OD_to_Dict(val) :
+        
+        if isinstance(val,OrderedDict):
+            
+            od = json.loads(json.dumps(val))
+            
+        return(od)
+
+def merge_df(df1,df2,key):
+        merged_df=pd.merge(df1, df2, on=key, how='outer',suffixes=['_sec','_hold'])
+        return(merged_df)
+        
+        
+        
+#xml file location
+path = Path(__file__).parent / "../RML4/output"
+
+xmlfile=[f for f in os.listdir(path) if f.endswith('.xml')]
+csvpath=Path(__file__).parent / "../CSV"
+
+#check if xmlfile exist
+if  len(xmlfile)==0:
+     print('XML files not available in input location,script terminated')         
+     exit
+
+
+for xmlfile in xmlfile:
+    
+    xmlfilepath=os.path.join(path,xmlfile)
+    xmlfilename=(xmlfile[:-4])
+    
+  
+    attr=[]
+    val=[]
+    hldngattr=[]
+    hldngval=[]
+    security_count=1
+    holding_count=1
+    hldng_nm=''
+    hldng_dic_list=[]
+    sec_dic={}
+    sec_dic_list=[]
+    sec_dic_list_temp=[]
+    
+        
+    
+    with open(xmlfilepath, 'r', encoding='utf-8') as fd:
+        xml_data = xmltodict.parse(fd.read())
+        
+    #convert OD to dict
+        xml_dict=OD_to_Dict(xml_data)
+    
+    #loop nested dict to retrieve attri,val    
+    
+    
+    # Security info
+    
+    security_op=get_all_values_Security(xml_dict,{})
+    sec_field=security_op[0]
+    sec_val= security_op[1]
+    No_of_secu=security_op[2]
+    df=pd.DataFrame([sec_val])
+    df.columns=sec_field
+    df_shape=df.shape
+    #security=pd.DataFrame(df.values.reshape((No_of_secu,-1)),columns=df.columns[ :int( df_shape[1]/No_of_secu) ] )
+    sec_temp=security_op[4]
+    sec_temp_df=pd.DataFrame([x for x in sec_temp])
+        
+    # holding info
+    holdparentkey=''
+    holding_op=get_all_values_holding(xml_dict,holdparentkey,{})
+    #hldng_nm=holding_op[0]
+    #hdlg_field=holding_op[1]
+    #hdlg_val= holding_op[2]
+    #No_of_hdlg=holding_op[3]
+    temp1=holding_op[5]
+    hldg_temp=pd.DataFrame([x for x in temp1])
+
+        
+    #position=merge_df(sec_temp_df,hldg_temp,'pricedSecurityName')
+    #position['holdingGroupName']=hldng_nm
+    
+#output
+    csvoppath=os.path.join(csvpath,xmlfilename)
+    
+    #position.to_csv(csvoppath+'.csv')
+    print(xmlfilename+'.csv'+ '  created in CSV folder')
+    
+    
+        
